@@ -1,6 +1,14 @@
 # Soubory, které se NEMAJÍ publikovat jako veřejné assety
 *.md
 .gitignore
-wrangler.jsonc
 .assetsignore
+wrangler.jsonc
 icon-src.html
+
+# Verzovací a build složky – NIKDY nepublikovat
+.git
+.git/**
+.wrangler
+.wrangler/**
+node_modules
+node_modules/**
