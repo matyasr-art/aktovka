@@ -1,0 +1,6 @@
+# Soubory, které se NEMAJÍ publikovat jako veřejné assety
+*.md
+.gitignore
+wrangler.jsonc
+.assetsignore
+icon-src.html

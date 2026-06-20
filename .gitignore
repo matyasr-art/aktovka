@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Node / wrangler
+node_modules/
+.wrangler/
+npm-debug.log*
+
+# Editory
+.vscode/
+.idea/

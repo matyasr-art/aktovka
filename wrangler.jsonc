@@ -1,0 +1,9 @@
+{
+  // Cloudflare Worker, který slouží POUZE statické soubory (žádný backend kód).
+  // Díky "assets.directory" se index.html servíruje na kořeni "/".
+  "name": "aktovka",
+  "compatibility_date": "2026-06-20",
+  "assets": {
+    "directory": "./"
+  }
+}

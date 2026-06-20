@@ -1,0 +1,19 @@
+{
+  "name": "Aktovka – škola bez chaosu",
+  "short_name": "Aktovka",
+  "description": "WhatsApp, e-maily i SMS od školy na jednom místě. Aktovka z nich vytáhne akce a hodí je do kalendáře.",
+  "lang": "cs",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#6a5ae0",
+  "theme_color": "#ffffff",
+  "categories": ["education", "productivity", "lifestyle"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
