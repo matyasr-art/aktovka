@@ -59,10 +59,16 @@ $('#login-form').addEventListener('submit', e => {
   if (u.includes('kriz') || u.includes('petr') || u === '') {
     state.user = USERS.kriz;
     $('#login-screen').classList.add('hidden');
-    $('#app').classList.remove('hidden');
-    buildSidebar(); render();
+    if (localStorage.getItem('aktovka-onboarded')) enterApp();
+    else startOnboarding();
   } else { $('#login-error').classList.remove('hidden'); }
 });
+
+function enterApp() {
+  $('#onboarding').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  buildSidebar(); render();
+}
 
 /* ── SIDEBAR ─────────────────────────────────── */
 const NAV = [
@@ -606,6 +612,8 @@ function renderPripojeni() {
   $('#main').innerHTML = `<div class="page fade-up">
     <div class="page-head"><h1>Připojení kanálů</h1><p>Odkud Aktovka sbírá zprávy o akcích</p></div>
 
+    <button class="onb-replay" onclick="startOnboarding()">▶ Spustit průvodce připojením</button>
+
     <div class="conn-summary">
       <div class="cs-item"><span class="cs-ic" style="background:var(--mail-bg);color:var(--mail)">✉️</span><div><div class="cs-n">Automaticky</div><div class="cs-l">E-mail běží sám</div></div></div>
       <div class="cs-sep"></div>
@@ -719,6 +727,148 @@ function shareStepsHTML(app) {
     <div class="ss-arr">→</div>
     <div class="ss"><span class="ss-n">3</span>🎒 Aktovka</div>
   </div>`;
+}
+
+/* ═══════════════════════════════════════════ ONBOARDING ═══ */
+function startOnboarding() {
+  state.onboarding = {
+    step: 0,
+    kids: CHILDREN.filter(c => c.active).map(c => ({ id: c.id, name: c.name, cls: c.cls, avatar: c.avatar, color: c.color })),
+    emailConnected: false, waFollowed: false, adding: false, revealed: false, _sched: false,
+  };
+  $('#login-screen').classList.add('hidden');
+  $('#app').classList.add('hidden');
+  $('#onboarding').classList.remove('hidden');
+  renderOnboarding();
+}
+function finishOnboarding() {
+  localStorage.setItem('aktovka-onboarded', '1');
+  state.onboarding = null;
+  enterApp();
+}
+function onbNext() { state.onboarding.step++; $('#onboarding').scrollTop = 0; renderOnboarding(); }
+function onbBack() { if (state.onboarding.step > 0) { state.onboarding.step--; renderOnboarding(); } }
+function onbConnectEmail() { state.onboarding.emailConnected = true; renderOnboarding(); toast('Gmail připojen', '✓', true); }
+function onbFollowWa() { state.onboarding.waFollowed = true; renderOnboarding(); toast('Sledujete školní kanál', '✓', true); }
+function onbShowAdd() { state.onboarding.adding = true; renderOnboarding(); setTimeout(() => $('#onb-kid-name') && $('#onb-kid-name').focus(), 30); }
+function onbAddKid() {
+  const n = ($('#onb-kid-name').value || '').trim();
+  const c = ($('#onb-kid-cls').value || '').trim();
+  if (!n) { $('#onb-kid-name').focus(); return; }
+  const colors = ['#ec4899', '#06b6d4', '#f97316', '#22c55e'];
+  state.onboarding.kids.push({ id: 'x' + Date.now(), name: n, cls: c || '?', avatar: '🧒', color: colors[state.onboarding.kids.length % colors.length] });
+  state.onboarding.adding = false;
+  renderOnboarding();
+}
+function onbRemoveKid(i) { state.onboarding.kids.splice(i, 1); renderOnboarding(); }
+
+function renderOnboarding() {
+  const o = state.onboarding;
+  const steps = [obStepSchool, obStepKids, obStepConnect, obStepDone];
+  const progress = `<div class="onb-progress">${[0, 1, 2].map(i => `<div class="onb-bar ${o.step >= i ? 'on' : ''}"></div>`).join('')}</div>`;
+  const brand = `<div class="onb-brand"><div class="lg">🎒</div><b>Aktovka</b></div>`;
+  $('#onboarding').innerHTML = `<div class="onb-inner fade-up">${brand}${o.step < 3 ? progress : ''}${steps[o.step]()}</div>`;
+  if (o.step === 3 && !o.revealed && !o._sched) {
+    o._sched = true;
+    setTimeout(() => { if (state.onboarding) { state.onboarding.revealed = true; renderOnboarding(); } }, 1900);
+  }
+}
+
+function obStepSchool() {
+  return `
+    <div class="onb-h">Která je vaše škola?</div>
+    <div class="onb-sub">Najdeme ji a propojíme, co půjde automaticky.</div>
+    <div class="onb-body">
+      <div class="onb-search">🔎 Hledat školu podle názvu nebo města…</div>
+      <div class="onb-school">
+        <div class="onb-school-ic">🏫</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:15.5px">ZŠ Compass</div>
+          <div style="font-size:13px;color:var(--text-2)">Praha 4 – Kunratice</div>
+          <div class="onb-badge-ok" style="margin-top:8px">✓ Propojená škola</div>
+        </div>
+        <div class="onb-check">✓</div>
+      </div>
+      <div class="onb-note">💜 Zprávy od propojené školy chodí do Aktovky samy — bez jakéhokoli nastavování.</div>
+    </div>
+    <div class="onb-foot">
+      <button class="onb-btn" onclick="onbNext()">Pokračovat</button>
+      <button class="onb-skip" onclick="finishOnboarding()">Přeskočit zatím</button>
+    </div>`;
+}
+
+function obStepKids() {
+  const o = state.onboarding;
+  const rows = o.kids.map((k, i) => `<div class="onb-kid">
+      <div class="onb-kid-av" style="--kidc:${k.color}">${k.avatar}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">${esc(k.name)}</div><div style="font-size:12.5px;color:var(--text-2)">${esc(k.cls)} třída</div></div>
+      <button class="onb-x" onclick="onbRemoveKid(${i})" aria-label="odebrat">✕</button>
+    </div>`).join('');
+  const add = o.adding
+    ? `<div class="onb-addkid">
+         <input id="onb-kid-name" placeholder="Jméno" autocomplete="off" />
+         <input id="onb-kid-cls" placeholder="Třída (4.)" style="max-width:96px" autocomplete="off" />
+         <button class="onb-add-go" onclick="onbAddKid()">Přidat</button>
+       </div>`
+    : `<button class="onb-addrow" onclick="onbShowAdd()">＋ Přidat dítě</button>`;
+  return `
+    <div class="onb-h">Kdo u vás chodí do školy?</div>
+    <div class="onb-sub">Podle třídy vám řekneme přesně, co platí pro <em>vaše</em> dítě.</div>
+    <div class="onb-body">${rows}${add}</div>
+    <div class="onb-foot">
+      <button class="onb-btn" onclick="onbNext()" ${o.kids.length ? '' : 'disabled'}>Pokračovat</button>
+      <button class="onb-skip" onclick="onbBack()">Zpět</button>
+    </div>`;
+}
+
+function obStepConnect() {
+  const o = state.onboarding;
+  const email = o.emailConnected
+    ? `<div class="onb-conn ok"><div class="onb-conn-ic" style="background:var(--mail-bg)">✉️</div><div style="flex:1;min-width:0"><div class="onb-conn-t">E-mail · Gmail</div><div class="onb-conn-s">petr.kriz@gmail.com</div></div><div class="onb-badge-ok">✓ Připojeno</div></div>`
+    : `<div class="onb-conn"><div class="onb-conn-ic" style="background:var(--mail-bg)">✉️</div><div style="flex:1;min-width:0"><div class="onb-conn-t">E-mail</div><div class="onb-conn-s">Vidíme jen zprávy od školy.</div></div><button class="onb-conn-btn" onclick="onbConnectEmail()">Připojit Gmail</button></div>`;
+  const wa = o.waFollowed
+    ? `<div class="onb-conn ok"><div class="onb-conn-ic" style="background:var(--wa-bg)">💬</div><div style="flex:1;min-width:0"><div class="onb-conn-t">WhatsApp</div><div class="onb-conn-s">Školní kanál ZŠ Compass</div></div><div class="onb-badge-ok">✓ Sledujete</div></div>`
+    : `<div class="onb-conn"><div class="onb-conn-ic" style="background:var(--wa-bg)">💬</div><div style="flex:1;min-width:0"><div class="onb-conn-t">WhatsApp</div><div class="onb-conn-s">Hromadné zprávy školy.</div></div><button class="onb-conn-btn" onclick="onbFollowWa()">Sledovat školu</button></div>`;
+  return `
+    <div class="onb-h">Odkud máme sbírat zprávy?</div>
+    <div class="onb-sub">Stačí jedno klepnutí, zbytek zařídíme.</div>
+    <div class="onb-body">
+      ${email}${wa}
+      <div class="onb-note">📲 SMS a ostatní zprávy přidáš kdykoliv přes <b>Sdílet → Aktovka</b>.</div>
+    </div>
+    <div class="onb-foot">
+      <button class="onb-btn" onclick="onbNext()">Pokračovat</button>
+      <button class="onb-skip" onclick="onbBack()">Zpět</button>
+    </div>`;
+}
+
+function obStepDone() {
+  const o = state.onboarding;
+  if (!o.revealed) {
+    return `<div class="thinking" style="padding:48px 0 40px">
+      <div class="orb"></div>
+      <div class="tt">Aktovka čte první zprávu od školy…</div>
+      <div class="ts">Hledám termín, místo a co platí pro vaše děti</div>
+    </div>`;
+  }
+  return `
+    <div class="onb-h">A je to! 🎉</div>
+    <div class="onb-sub">Z první zprávy Aktovka rovnou připravila akci:</div>
+    <div class="onb-body">
+      <div class="onb-preview">
+        <div class="onb-prev-top"><span class="onb-prev-cat">🚌 Výlet</span><span class="onb-prev-conf">✨ 97 %</span></div>
+        <div class="onb-prev-title">Výlet – výstava Signal Space</div>
+        <div class="onb-prev-when">📅 čt 25. června · 👕 uniforma + kšiltovka · 💰 ~100 Kč</div>
+        <div class="onb-prev-kids">
+          <div class="onb-prev-kid"><span class="e">🦊</span><div><b>Eliška</b> · 3. třída<br>sraz 8:20 · oběd ~12:45</div></div>
+          <div class="onb-prev-kid"><span class="e">🐢</span><div><b>Matěj</b> · 5. třída<br>sraz 8:35 · zmrzlina 🍦 · oběd ~13:15</div></div>
+        </div>
+      </div>
+      <div class="onb-note">Takhle to uvidíš u každé zprávy — vždy personalizované pro každé dítě.</div>
+    </div>
+    <div class="onb-foot">
+      <button class="onb-btn" onclick="finishOnboarding()">Vstoupit do Aktovky →</button>
+    </div>`;
 }
 
 /* ═══════════════════════════════════════════ DRAWER (detail akce) ═══ */
